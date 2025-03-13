@@ -11,6 +11,9 @@ const { ObjectId } = require('mongodb');
 var staticPath = path.join(__dirname, '..', 'WebForum-Frontend');
 app.use(express.static(staticPath));
 
+// Middleware: Returns lesson images
+app.use('/images', express.static(path.join(__dirname, 'images')))
+
 // Middleware: Log incoming requests
 app.use((req, res, next) => {
     console.log(`Incoming request: ${req.method} ${req.url}`);
@@ -35,6 +38,6 @@ let db = client.db(dbName);
 
 
 // Starts and logs the server start on the given port
-app.listen(3000, function () {
-    console.log("App started on port 3000");
+app.listen(5000, function () {
+    console.log("App started on port 5000");
 });
