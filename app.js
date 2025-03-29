@@ -1,4 +1,4 @@
-// Necessary require/import values
+// app.js
 var express = require("express");
 var path = require("path");
 var app = express();
@@ -13,7 +13,7 @@ const { ObjectId } = require('mongodb');
 var staticPath = path.join(__dirname, '..', 'WebForum-Frontend');
 app.use(express.static(staticPath));
 
-// Referencing MongoDB database connection details
+// MongoDB Initialization
 let dbPprefix = properties.get("db.prefix");
 let dbUsername = encodeURIComponent(properties.get("db.user"));
 let dbPwd = encodeURIComponent(properties.get("db.pwd"));
@@ -21,23 +21,42 @@ let dbName = properties.get("db.dbName");
 let dbUrl = properties.get("db.dbUrl");
 let dbParams = properties.get("db.params");
 const uri = dbPprefix + dbUsername + ":" + dbPwd + dbUrl + dbParams;
-
-// Connects to the database via the connection details using the Node.js driver
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
-let db = client.db(dbName);
+let db = client.db(dbName); // MongoDB database
 
-// Middleware: Returns lesson images
+// Firebase Admin Initialization
+var admin = require("firebase-admin");
+var firebaseConfigPath = path.resolve(__dirname, "conf/firebase-admin.json");
+try {
+    admin.initializeApp({
+        credential: admin.credential.cert(require(firebaseConfigPath)),
+    });
+    console.log("Firebase initialized successfully.");
+} catch (error) {
+    console.error("Firebase initialization failed:", error.message);
+}
+const auth = admin.auth();
+const dbFirestore = admin.firestore(); // Firestore database
+
+// node-fetch setup using dynamic import
+const fetch = (...args) =>
+    import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const firebaseApiKey = "AIzaSyDw4g5U5kkh2uqT3ilBpRBGIIBJKJUQmMc";
+
+// Middleware for static files and logging
 app.use('/images', express.static(path.join(__dirname, 'images')));
-
-// Middleware: Log incoming requests
 app.use((req, res, next) => {
     console.log(`Incoming request: ${req.method} ${req.url}`);
     next();
 });
 
+// Mount API Router
+// Require the central router (which will combine feature routers)
+var apiRouter = require("./routes")(db, auth, dbFirestore, admin, fetch, firebaseApiKey);
+app.use("/api", apiRouter);
 
-// Starts and logs the server start on the given port
+// Start the Server
 app.listen(5000, function () {
     console.log("App started on port 5000");
 });
