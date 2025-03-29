@@ -8,7 +8,7 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
         try {
             const { email, password, username } = req.body;
 
-            // Create a new user with displayName set to username
+            // Set the record set into firebase auth
             const userRecord = await auth.createUser({
                 email: email,
                 password: password,
@@ -44,6 +44,52 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
         } catch (error) {
             console.error("Error during registration:", error);
             res.status(500).send({ error: "Registration failed. Please try again." });
+        }
+    });
+
+    // Login Route using Firebase’s REST API
+    router.post("/login", async (req, res) => {
+        try {
+            const { email, password } = req.body;
+            const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    returnSecureToken: true
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error ? data.error.message : "Unknown error during login.");
+            }
+            res.status(200).send(data);
+        } catch (error) {
+            console.error("Error during login:", error.message);
+            res.status(401).send({ message: "Login failed. " + error.message });
+        }
+    });
+
+    // Auth State Route to verify the ID token and return user info
+    router.get("/authState", async (req, res) => {
+        try {
+            const token = req.headers.authorization?.split("Bearer ")[1];
+            if (!token) {
+                return res.status(401).send({ isAuthenticated: false });
+            }
+            const decodedToken = await auth.verifyIdToken(token);
+            const userRecord = await auth.getUser(decodedToken.uid);
+            res.status(200).send({
+                uid: userRecord.uid,
+                email: userRecord.email,
+                displayName: userRecord.displayName,
+                isAuthenticated: true
+            });
+        } catch (error) {
+            console.error("Error verifying authentication state:", error);
+            res.status(401).send({ isAuthenticated: false });
         }
     });
 
