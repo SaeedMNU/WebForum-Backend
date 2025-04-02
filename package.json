@@ -12,6 +12,7 @@
     "express": "^4.21.1",
     "firebase-admin": "^13.2.0",
     "mongodb": "^4.12.1",
+    "multer": "^1.4.5-lts.2",
     "node-fetch": "^3.3.2",
     "properties-reader": "^2.3.0"
   }

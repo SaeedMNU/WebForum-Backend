@@ -3,7 +3,7 @@ var express = require("express");
 module.exports = function (db, ObjectId) {
     var router = express.Router();
 
-    // Search Media Route
+    // Search Media Route (e.g., GET /api/media/search/someterm)
     router.get("/search/:searchTerm", async function (req, res) {
         try {
             const searchTerm = req.params.searchTerm;
@@ -43,7 +43,7 @@ module.exports = function (db, ObjectId) {
         }
     });
 
-    // Media Details Route
+    // Media Details Route (e.g., GET /api/media/details/id)
     router.get("/details/:id", async function (req, res) {
         try {
             const objectId = req.params.id;

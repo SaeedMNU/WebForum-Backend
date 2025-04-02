@@ -1,15 +1,15 @@
-// routes/index.js
 var express = require("express");
-module.exports = function (db, auth, dbFirestore, admin, fetch, firebaseApiKey) {
-    var router = express.Router();
+module.exports = function(db, auth, dbFirestore, admin, fetch, firebaseApiKey, upload) {
+  var router = express.Router();
 
-    // Load our feature routes:
-    var authRoutes = require("./auth")(auth, dbFirestore, admin, fetch, firebaseApiKey);
-    var mediaRoutes = require("./media")(db, require("mongodb").ObjectId);
+  // Mount routes
+  var authRoutes = require("./auth")(auth, dbFirestore, admin, fetch, firebaseApiKey);
+  var mediaRoutes = require("./media")(db, require("mongodb").ObjectId);
+  var userRoutes = require("./users")(dbFirestore, admin, upload);
 
-    // Mount under appropriate subpaths
-    router.use("/auth", authRoutes);    // For /api/auth/*
-    router.use("/media", mediaRoutes);    // For /api/media/*
+  router.use("/auth", authRoutes);
+  router.use("/media", mediaRoutes);
+  router.use("/users", userRoutes);
 
-    return router;
+  return router;
 };

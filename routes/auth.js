@@ -8,7 +8,7 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
         try {
             const { email, password, username } = req.body;
 
-            // Set the record set into firebase auth
+            // Create a new user with displayName set to username
             const userRecord = await auth.createUser({
                 email: email,
                 password: password,
@@ -47,7 +47,7 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
         }
     });
 
-    // Login Route using Firebase’s REST API
+    // Login Route using Firebase’s REST API (Identity Toolkit)
     router.post("/login", async (req, res) => {
         try {
             const { email, password } = req.body;
@@ -72,7 +72,7 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
         }
     });
 
-    // Auth State Route to verify the ID token and return user info
+    // Auth State Route – verify the ID token and return user info
     router.get("/authState", async (req, res) => {
         try {
             const token = req.headers.authorization?.split("Bearer ")[1];

@@ -31,6 +31,7 @@ var firebaseConfigPath = path.resolve(__dirname, "conf/firebase-admin.json");
 try {
     admin.initializeApp({
         credential: admin.credential.cert(require(firebaseConfigPath)),
+        storageBucket: "mediaforum-de45d.firebasestorage.app",
     });
     console.log("Firebase initialized successfully.");
 } catch (error) {
@@ -44,16 +45,22 @@ const fetch = (...args) =>
     import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const firebaseApiKey = "AIzaSyDw4g5U5kkh2uqT3ilBpRBGIIBJKJUQmMc";
 
-// Middleware for static files and logging
+// This will be used in your route files for handling file uploads.
+const multer = require("multer");
+const storageMulter = multer.memoryStorage();
+const upload = multer({ storage: storageMulter });
+
+// Middleware for serving static image files (if required)
 app.use('/images', express.static(path.join(__dirname, 'images')));
+
+// Logging Middleware
 app.use((req, res, next) => {
     console.log(`Incoming request: ${req.method} ${req.url}`);
     next();
 });
 
-// Mount API Router
-// Require the central router (which will combine feature routers)
-var apiRouter = require("./routes")(db, auth, dbFirestore, admin, fetch, firebaseApiKey);
+// Mount API Router (combine your feature routers)
+var apiRouter = require("./routes")(db, auth, dbFirestore, admin, fetch, firebaseApiKey, upload);
 app.use("/api", apiRouter);
 
 // Start the Server
