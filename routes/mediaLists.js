@@ -4,6 +4,7 @@ const router = express.Router();
 
 module.exports = function (db) {
     const mediaListsCollection = db.collection("mediaLists");
+    const mediaTitlesCollection = db.collection("mediaTitles");
 
     // Toggle Endpoint: Adds or removes a media entry for the user.
     router.post("/toggle", async (req, res) => {
@@ -57,6 +58,7 @@ module.exports = function (db) {
             if (!userMediaList) {
                 return res.json({ exists: false });
             }
+            // Convert both media_id values to string for a reliable comparison.
             const entry = userMediaList.media.find(item =>
                 item.media_id.toString() === media_id.toString()
             );
@@ -72,36 +74,112 @@ module.exports = function (db) {
     });
 
 
+    // Helper function performing aggregation
+    async function updateMediaTitleAggregates(media_id) {
+        const pipeline = [
+            { $unwind: "$media" },
+            { $match: { "media.media_id": media_id } },
+            {
+                $group: {
+                    _id: "$media.media_id",
+                    members: { $sum: 1 },
+                    scored_by: {
+                        $sum: {
+                            $cond: [{ $ne: ["$media.score", null] }, 1, 0]
+                        }
+                    },
+                    totalScore: {
+                        $sum: {
+                            $cond: [{ $ne: ["$media.score", null] }, "$media.score", 0]
+                        }
+                    },
+                    favourites: {
+                        $sum: {
+                            $cond: [{ $eq: ["$media.favourited", true] }, 1, 0]
+                        }
+                    }
+                }
+            }
+        ];
+
+        const aggResult = await mediaListsCollection.aggregate(pipeline).toArray();
+        if (aggResult.length > 0) {
+            const data = aggResult[0];
+            const avgScore = data.scored_by > 0 ? data.totalScore / data.scored_by : 0;
+            await mediaTitlesCollection.updateOne(
+                { media_id: media_id },
+                {
+                    $set: {
+                        score: avgScore,
+                        scored_by: data.scored_by,
+                        members: data.members,
+                        favourites: data.favourites
+                    }
+                },
+                { upsert: true }
+            );
+        } else {
+            // No entry exists, reset aggregated stats to zero.
+            await mediaTitlesCollection.updateOne(
+                { media_id: media_id },
+                { $set: { score: 0, scored_by: 0, members: 0, favourites: 0 } },
+                { upsert: true }
+            );
+        }
+    }
+
+    // Update individual media entry and then update aggregated stats.
     router.post("/update", async (req, res) => {
         const { uid, media_id, score, favourited } = req.body;
         if (!uid || !media_id) {
             return res.status(400).json({ error: "Missing uid or media_id" });
         }
+
+        // Process the score - if it's an empty string or undefined, set it to null.
+        const newScore = (score === "" || score === undefined) ? null : score;
+
         try {
             let userMediaList = await mediaListsCollection.findOne({ uid: uid });
             if (!userMediaList) {
-                // Create a new document with this media entry.
+                // No document exists for this user so create one with this new media entry.
                 const newDoc = {
                     uid: uid,
-                    media: [{ media_id: media_id, score: score || null, favourited: typeof favourited === "boolean" ? favourited : false }]
+                    media: [{
+                        media_id: media_id,
+                        score: newScore,
+                        favourited: typeof favourited === "boolean" ? favourited : false
+                    }]
                 };
                 await mediaListsCollection.insertOne(newDoc);
+                // After adding, update aggregated values.
+                await updateMediaTitleAggregates(media_id);
                 return res.json({ success: true, created: true });
             } else {
-                // Check if the media entry exists.
-                const existing = userMediaList.media.find(item => item.media_id === media_id);
+                // Check if the media entry exists for the user.
+                const existing = userMediaList.media.find(item => item.media_id.toString() === media_id.toString());
                 if (!existing) {
+                    // If it does not exist, push a new entry with the provided data.
                     await mediaListsCollection.updateOne(
                         { uid: uid },
-                        { $push: { media: { media_id: media_id, score: score || null, favourited: typeof favourited === "boolean" ? favourited : false } } }
+                        {
+                            $push: {
+                                media: {
+                                    media_id: media_id,
+                                    score: newScore,
+                                    favourited: typeof favourited === "boolean" ? favourited : false
+                                }
+                            }
+                        }
                     );
+                    await updateMediaTitleAggregates(media_id);
                     return res.json({ success: true, created: true });
                 } else {
-                    // Update the existing media entry.
+                    // Update the existing media entry
                     await mediaListsCollection.updateOne(
                         { uid: uid, "media.media_id": media_id },
-                        { $set: { "media.$.score": score, "media.$.favourited": favourited } }
+                        { $set: { "media.$.score": newScore, "media.$.favourited": favourited } }
                     );
+                    await updateMediaTitleAggregates(media_id);
                     return res.json({ success: true, updated: true });
                 }
             }
@@ -110,6 +188,7 @@ module.exports = function (db) {
             return res.status(500).json({ error: "Internal server error" });
         }
     });
+
 
     return router;
 };
