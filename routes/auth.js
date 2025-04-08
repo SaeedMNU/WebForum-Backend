@@ -8,6 +8,14 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
         try {
             const { email, password, username } = req.body;
 
+            // Regex to validate password strength
+            const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+            if (!passwordPattern.test(password)) {
+                return res.status(400).send({
+                    error: "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
+                });
+            }
+
             // Create a new user with displayName set to username
             const userRecord = await auth.createUser({
                 email: email,
@@ -32,7 +40,7 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
                 likes_received: 0,
                 dislikes_received: 0,
                 completed_media_ids: [],
-                website_role: "user",  // Default role
+                website_role: "user",
                 theme: "",
                 notification_settings: {
                     forum_notifications: true,
@@ -42,8 +50,12 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
 
             res.status(201).send({ uid: userRecord.uid, message: "User created and profile saved." });
         } catch (error) {
-            console.error("Error during registration:", error);
-            res.status(500).send({ error: "Registration failed. Please try again." });
+            console.error("Error during registration:", error.message);
+            // Extract detailed error message from error.errorInfo if available.
+            const errorMessage = error.errorInfo && error.errorInfo.message
+                ? error.errorInfo.message
+                : "Registration failed. Please try again.";
+            res.status(500).send({ error: errorMessage });
         }
     });
 
@@ -63,14 +75,16 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
             });
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error ? data.error.message : "Unknown error during login.");
+                return res.status(401).send({ error: "Incorrect email or password." });
             }
             res.status(200).send(data);
         } catch (error) {
             console.error("Error during login:", error.message);
-            res.status(401).send({ message: "Login failed. " + error.message });
+            res.status(401).send({ error: "Login failed. " + error.message });
         }
     });
+
+
 
     // Auth State Route – verify the ID token and return user info
     router.get("/authState", async (req, res) => {
