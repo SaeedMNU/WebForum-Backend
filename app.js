@@ -31,7 +31,7 @@ var firebaseConfigPath = path.resolve(__dirname, "conf/firebase-admin.json");
 try {
     admin.initializeApp({
         credential: admin.credential.cert(require(firebaseConfigPath)),
-        storageBucket: "mediaforum-de45d.firebasestorage.app",
+        storageBucket: "mediaforum-de45d.firebasestorage.app"
     });
     console.log("Firebase initialized successfully.");
 } catch (error) {
@@ -45,7 +45,7 @@ const fetch = (...args) =>
     import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const firebaseApiKey = "AIzaSyDw4g5U5kkh2uqT3ilBpRBGIIBJKJUQmMc";
 
-// This will be used in your route files for handling file uploads.
+// File upload handler
 const multer = require("multer");
 const storageMulter = multer.memoryStorage();
 const upload = multer({ storage: storageMulter });
