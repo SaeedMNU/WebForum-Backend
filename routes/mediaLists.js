@@ -189,6 +189,48 @@ module.exports = function (db) {
         }
     });
 
+    router.get("/user-list", async (req, res) => {
+        const { uid } = req.query;
+
+        if (!uid) {
+            return res.status(400).json({ error: "Missing uid" });
+        }
+
+        try {
+            const userMediaList = await mediaListsCollection.findOne({ uid: uid });
+
+            if (!userMediaList || !userMediaList.media.length) {
+                return res.json({ mediaList: [] });
+            }
+
+            const mediaIds = userMediaList.media.map(item => item.media_id);
+
+            // Get full media title data for all media_ids in one query
+            const titles = await mediaTitlesCollection
+                .find({ media_id: { $in: mediaIds } })
+                .toArray();
+
+            // Merge score/favourited with main_picture/title
+            const fullList = userMediaList.media.map(item => {
+                const titleData = titles.find(t => t.media_id === item.media_id);
+                return {
+                    media_id: item.media_id,
+                    score: item.score,
+                    favourited: item.favourited,
+                    title: titleData?.title || "Unknown",
+                    main_picture: titleData?.main_picture || ""
+                };
+            });
+
+            return res.json({ mediaList: fullList });
+
+        } catch (error) {
+            console.error("Error loading user list:", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    });
+
+
 
     return router;
 };
