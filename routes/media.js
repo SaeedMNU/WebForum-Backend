@@ -62,7 +62,7 @@ module.exports = function (db, ObjectId) {
         }
     });
 
-    // New Home Route – fetch media titles for home page categories
+    // Fetch media titles for each category
     router.get("/home", async (req, res) => {
         try {
             const discovery = await db.collection("mediaTitles").aggregate([
@@ -70,7 +70,7 @@ module.exports = function (db, ObjectId) {
                 { $project: { _id: 1, title: 1, main_picture: 1, synopsis: 1 } }
             ]).toArray();
 
-            const genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Slice of Life"];
+            const genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life"];
             const randomGenre = genres[Math.floor(Math.random() * genres.length)];
             const interestedIn = await db.collection("mediaTitles").aggregate([
                 { $match: { genres: randomGenre } },
