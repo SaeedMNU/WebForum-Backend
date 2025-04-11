@@ -39,7 +39,6 @@ module.exports = function (auth, dbFirestore, admin, fetch, firebaseApiKey) {
                 disliked_social_posts: [],
                 likes_received: 0,
                 dislikes_received: 0,
-                completed_media_ids: [],
                 website_role: "user",
                 theme: "",
                 notification_settings: {
