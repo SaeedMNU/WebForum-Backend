@@ -50,7 +50,7 @@ const multer = require("multer");
 const storageMulter = multer.memoryStorage();
 const upload = multer({ storage: storageMulter });
 
-// Middleware for serving static image files (if required)
+// Middleware for serving static image files
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
 // Logging Middleware
@@ -59,7 +59,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// Mount API Router (combine your feature routers)
+// Mount API Router
 var apiRouter = require("./routes")(db, auth, dbFirestore, admin, fetch, firebaseApiKey, upload);
 app.use("/api", apiRouter);
 
